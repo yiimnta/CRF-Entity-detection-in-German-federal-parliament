@@ -119,7 +119,7 @@ class ICCli():
             elif word in self.list_mood:
                 result.append((word, "MOOD", upcase, "MOOD"))
 
-            elif re.search(r'^(Präsident|Vizepräsident)(s|es|in|innen|en)*$', word) != None:
+            elif re.search(r'^(Präsident|Vizepräsident|Alterspräsident)(s|es|in|innen|en)*$', word) != None:
 
                 result.append((word, "PRE", upcase, "PRESIDENT"))
 
@@ -146,9 +146,3 @@ class ICCli():
         result.append(("", "BREAK", "", "BREAK-LINE"))
 
         self.result += result
-
-#pro = ICCli("data/data_name.txt")
-#pro.exportCRFTraining('data/data_using_train.txt', 'output/train_file.txt');
-#pro.exportCRFTesting('data/data_using_test.txt', 'output/result/test_file.txt');
-
-#pro.exportXML("output/result.txt","output/result.xml")

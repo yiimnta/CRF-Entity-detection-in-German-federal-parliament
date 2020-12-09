@@ -141,12 +141,12 @@ def convertChunkTag(arr):
 def convertXMLData(file_path, chunk_data):
     xml_data = []
     grammar = r"""
-        BEGIN:{<BEGIN><COLON><NUMBER><TIME><BREAK-LINE>}
-        PRESIDENT:{<PRESIDENT><TITLE>?<NAME>+<COLON><BREAK-LINE>}
-        NAME:{<TITLE>?<NAME>+(<PARAGRAPH>|<BBRACKET><FRACTION><EBRACKET>|<BBRACKET><PARAGRAPH><EBRACKET>|<DOT>)*<COLON><BREAK-LINE>}
-        AGENDA:{<PARAGRAPH><AGENDA><NUMBER><PARAGRAPH><COLON><BREAK-LINE>}
-        COMMENT:{<BBRACKET>(<MOOD>|<PARAGRAPH>|<COLON>|<TITLE>?<NAME>*|<FRACTION>|<DOT>|<COLON>|<BREAK-LINE>)+<EBRACKET><BREAK-LINE>}
-        PARAGRAPH:{(<TITLE>?<DOT>?|<TITLE>?<NAME><DOT>?|)<PARAGRAPH>(<TITLE>?<PRESIDENT>|<MOOD>|<NUMBER>|<TIME>|<TITLE>?<NAME>*|<FRACTION>|<PARAGRAPH>|<DOT>)*(<DOT>|<COLON>|)<BREAK-LINE>}
+        SBEGIN:{<BEGIN><COLON><NUMBER><TIME><BREAK-LINE>}
+        SPRESIDENT:{<PRESIDENT><TITLE>?<NAME>+<COLON><BREAK-LINE>}
+        SNAME:{<TITLE>?<NAME>+(<PARAGRAPH>|<BBRACKET><FRACTION><EBRACKET>|<BBRACKET><PARAGRAPH><EBRACKET>|<DOT>)*<COLON><BREAK-LINE>}
+        SAGENDA:{<PARAGRAPH><AGENDA><NUMBER><PARAGRAPH><COLON><BREAK-LINE>}
+        SCOMMENT:{<BBRACKET>(<MOOD>|<PARAGRAPH>|<COLON>|<TITLE>?<NAME>*|<FRACTION>|<DOT>|<COLON>|<BREAK-LINE>|<PRESIDENT>|<TITLE>)+<EBRACKET><BREAK-LINE>}
+        SPARAGRAPH:{(<TITLE><PRESIDENT>|<TITLE>?<DOT>?|<PRESIDENT>|<MOOD>|<NUMBER>|<TIME>|<TITLE>?<NAME>|<FRACTION>|<PARAGRAPH>|<DOT>|<COLON>)+(<DOT>|<COLON>|)<BREAK-LINE>}
     """
     cp = nltk.RegexpParser(grammar)
     dt = cp.parse(chunk_data)
@@ -160,17 +160,24 @@ def convertXMLData(file_path, chunk_data):
     group_tag = None
     president = ""
     #create XML item
+    is_bracket_before = False
 
     for label, leaves in xml_data:
         line = ""
         for ch, tag in leaves:
             if tag not in ["DOT","COLON"]:
-                line+=" "
+                if tag not in ["BBRACKET","EBRACKET"]:
+                    if is_bracket_before:
+                        is_bracket_before = False
+                    else:
+                        line+=" "
+                else:
+                    is_bracket_before = True
             line += ch
 
         line = line.strip()
 
-        if label == "BEGIN":
+        if label == "SBEGIN":
             begin_tag = ET.SubElement(wrapper, 'sitzungsbeginn')
             time = "0:00"
             for token,pos in leaves:
@@ -180,7 +187,7 @@ def convertXMLData(file_path, chunk_data):
             parent_tag = begin_tag
             group_tag = begin_tag
 
-        elif label == "AGENDA":
+        elif label == "SAGENDA":
             agenda_tag = ET.SubElement(wrapper, 'tagesordnungspunkt')
             time = "0:00"
             num = -1
@@ -200,12 +207,12 @@ def convertXMLData(file_path, chunk_data):
             parent_tag = agenda_tag
             group_tag = agenda_tag
 
-        elif label == "PRESIDENT":
+        elif label == "SPRESIDENT":
             president_tag = ET.SubElement(parent_tag, 'p')
             # TODO: add klasse of president
             president_tag.text = line
             president = line
-        elif label == "NAME":
+        elif label == "SNAME":
 
             """NAME:{<TITLE>?<NAME>+(<PARAGRAPH>|<BBRACKET><FRACTION><EBRACKET>|<BBRACKET><PARAGRAPH><EBRACKET>|<DOT>)*<COLON><BREAK-LINE>}"""
             speak_tag = ET.SubElement(group_tag, 'rede')
@@ -238,11 +245,11 @@ def convertXMLData(file_path, chunk_data):
             speaker_tag.text = line
             parent_tag = speak_tag
 
-        elif label == "COMMENT":
+        elif label == "SCOMMENT":
             comment_tag = ET.SubElement(parent_tag, 'kommentar')
             comment_tag.text = line
 
-        elif label == "PARAGRAPH":
+        elif label == "SPARAGRAPH":
             p_tag = ET.SubElement(parent_tag, 'p')
             # TODO: add klasse of paragraph
             p_tag.text = line
