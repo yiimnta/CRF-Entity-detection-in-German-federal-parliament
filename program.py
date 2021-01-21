@@ -198,6 +198,4 @@ class ICCli():
                         result.append((word, "PAR", upcase, "PARAGRAPH"))
 
         result.append(("", "", "", "")) #break-line
-
-
         self.result += result

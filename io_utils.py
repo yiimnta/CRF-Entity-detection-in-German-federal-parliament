@@ -21,7 +21,6 @@ def repareDataInOneLine(xml_file_path, list_name_paticipants):
     data = []
     dataRow = ""
     is_connected = False
-    row = ""
     is_just_removed = False# remove -
 
     #read file xml
@@ -38,6 +37,8 @@ def repareDataInOneLine(xml_file_path, list_name_paticipants):
                     if re.search(r"(-|–)$", dataRow) != None:
                         dataRow = dataRow[:-1]
                     dataRow += row
+                else:
+                    dataRow = row
             data.append(dataRow.strip())
             dataRow = ""
             is_connected = False
