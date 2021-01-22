@@ -56,9 +56,9 @@ Bericht	         PAR    Cap	   I-PARAGRAPH
 ```
 
 ### Template file for CRF++
-Columns for each row of data in the training file are understood as conditions that help CRF to tag each row accurately.
-You can find out more <a href="https://taku910.github.io/crfpp/" target="_blank">here</a>
-`bin\template_file`
+- Columns of each row of data in the training file are understood as conditions that help for the POS Tagging of CRF++ accurately. Through the template file we can customize the conditions as we wish..
+- You can find more information <a href="https://taku910.github.io/crfpp/" target="_blank">here</a>
+- `bin\template_file`
 ```bash
 # Unigram
 U00:%x[0,0]/%x[1,0]/%x[2,0]
@@ -72,6 +72,17 @@ U05:%x[-1,1]/%x[0,1]/%x[1,1]/%x[2,1]
 B
 ```
 
-### Training
+### CRF++ Training
+Here we will create a model file for the CRF model
+
+```bash
+crf_learn <template file path> <training file path> <model file name>
+```
+For an example:
+```bash
+crf_learn template_file train_file.txt model_file
+```
 
 ### Testing
+### CRF++ Testing
+
