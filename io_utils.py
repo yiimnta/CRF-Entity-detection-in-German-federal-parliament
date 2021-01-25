@@ -74,8 +74,8 @@ def repareDataInOneLine(xml_file_path, list_name_paticipants):
     if dataRow != "":
         data.append(dataRow)
 
-    with codecs.open('./output/data_oneline.txt', 'w+', 'utf-8') as file:
-        file.write("\n".join(data))
+    # with codecs.open('./output/data_oneline.txt', 'w+', 'utf-8') as file:
+    #     file.write("\n".join(data))
     return data
 
 

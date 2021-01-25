@@ -5,6 +5,7 @@ from nltk.chunk import conlltags2tree
 import xml.etree.ElementTree as ET
 import io_utils
 from xml.dom import minidom
+import copy
 
 def printData(arr):
     print('\n'.join(arr))
@@ -179,10 +180,10 @@ def convertXMLData(file_path, chunk_data):
         CEVENTDATE:{<START-LINE><STATE><DOT><WEEKDAY><DOT><PARAGRAPH>?<NUMBER><DOT>?<MONTH><DOT>?<NUMBER><BREAK-LINE>}
         CPRESIDENT:{<START-LINE><PRESIDENT><TITLE>?<NAME>+<COLON><BREAK-LINE>}
         CNAME:{<START-LINE><TITLE>?<NAME>+(<PARAGRAPH>|<BBRACKET><FRACTION><DIV>?<FRACTION>?<EBRACKET>|<BBRACKET><PARAGRAPH><EBRACKET>|<DOT>)*<COLON><BREAK-LINE>}
-        CAGENDA:{<START-LINE>(<PARAGRAPH><AGENDA><NUMBER>)+(<PARAGRAPH>|<DIV>|<MONTH>|<MEETING>|<WEEKDAY>|<STATE>|<DOT>|<QUESTION>|<MOOD>|<NUMBER>|<TIME>|<TITLE>?<NAME>|<FRACTION><DIV>?<FRACTION>?|)*<COLON><BREAK-LINE>}
+        CAGENDA:{<START-LINE>(<PARAGRAPH><AGENDA><NUMBER>)+(<PARAGRAPH>|<END>|<DIV>|<MONTH>|<MEETING>|<WEEKDAY>|<STATE>|<DOT>|<QUESTION>|<MOOD>|<NUMBER>|<TIME>|<TITLE>?<NAME>|<FRACTION><DIV>?<FRACTION>?|)*<COLON><BREAK-LINE>}
         CEND:{<START-LINE><BBRACKET><END><COLON><NUMBER><DOT><NUMBER><TIME><EBRACKET><BREAK-LINE>}
-        CCOMMENT:{<START-LINE>(<BBRACKET>(<INTERQUESTION>|<MOOD>|<PARAGRAPH>|<COLON>|<MONTH>|<WEEKDAY>|<MEETING>|<STATE>|<TITLE>?<NAME>*|<FRACTION><DIV>?<FRACTION>?|<DOT>|<QUESTION>|<COLON>|<PRESIDENT>|<NUMBER>|<DIV>|<TITLE>)+<EBRACKET>)+<BREAK-LINE>}
-        CPARAGRAPH:{<START-LINE>(<INTERQUESTION>|<TITLE><PRESIDENT>|<TITLE>?<DOT>?|<MONTH>|<WEEKDAY>|<MEETING>|<STATE>|<PRESIDENT>|<AGENDA>|<MOOD>|<NUMBER>|<TIME>|<TITLE>?<NAME>|<FRACTION><DIV>?<FRACTION>?|<DIV>|<PARAGRAPH>|<DOT>|<COLON>|<QUESTION>|<BBRACKET>|<EBRACKET>)+(<DOT>|<COLON>|)<BREAK-LINE>}
+        CCOMMENT:{<START-LINE>(<BBRACKET>(<INTERQUESTION>|<MOOD>|<PARAGRAPH>|<END>|<COLON>|<MONTH>|<WEEKDAY>|<MEETING>|<STATE>|<TITLE>?<NAME>*|<FRACTION><DIV>?<FRACTION>?|<DOT>|<QUESTION>|<COLON>|<PRESIDENT>|<NUMBER>|<DIV>|<TITLE>)+<EBRACKET>)+<BREAK-LINE>}
+        CPARAGRAPH:{<START-LINE>(<INTERQUESTION>|<NAME>|<PRESIDENT>|<TITLE>|<MONTH>|<WEEKDAY>|<END>|<MEETING>|<STATE>|<PRESIDENT>|<AGENDA>|<MOOD>|<NUMBER>|<TIME>|<FRACTION><DIV>?<FRACTION>?|<DIV>|<PARAGRAPH>|<DOT>|<COLON>|<QUESTION>|<BBRACKET>|<EBRACKET>)+(<DOT>|<COLON>|)<BREAK-LINE>}
     """
     cp = nltk.RegexpParser(grammar)
     dt = cp.parse(chunk_data)
@@ -310,6 +311,11 @@ def convertXMLData(file_path, chunk_data):
             group_tag = begin
 
         elif label == "CAGENDA":
+            if is_president_before:
+                list_group_tags = list(group_tag)
+                if list_group_tags[-1].tag == "praesident":
+                    if len(list_group_tags[-1]) == 1:
+                        group_tag.remove(list_group_tags[-1])
             agenda_tag = ET.SubElement(content, 'tagesordnungspunkt')
             num = -1
             topId = ""
@@ -322,10 +328,19 @@ def convertXMLData(file_path, chunk_data):
                     break
 
             agenda_tag.set("top-id", topId)
-            p_tag = ET.SubElement(agenda_tag, 'p')
+            p_tag = ET.Element('p')
             p_tag.text = line
-            parent_tag = agenda_tag
             group_tag = agenda_tag
+            if president_tag != None:
+                new_president_tag = ET.Element('preasident')
+                new_name = copy.deepcopy(president_tag.find('name'))
+                new_president_tag.append(new_name)
+                group_tag.append(new_president_tag)
+                new_president_tag.append(p_tag)
+                parent_tag = new_president_tag
+            else:
+                agenda_tag.append(p_tag)
+                parent_tag = agenda_tag
 
         #<START-LINE><BBRACKET><END><COLON><NUMBER><TIME><EBRACKET><BREAK-LINE>
         elif label == "CEND":
@@ -348,15 +363,23 @@ def convertXMLData(file_path, chunk_data):
         # CPRESIDENT:{<START-LINE><PRESIDENT><TITLE>?<NAME>+<COLON><BREAK-LINE>}
         elif label == "CPRESIDENT":
             president_tag = ET.Element('praesident')
-            rolle = ET.SubElement(president_tag, 'rolle')
             name = ET.SubElement(president_tag, 'name')
-            name.text = ""
+            rolle = ET.Element('rolle')
+
             for token, pos in leaves:
                 if pos == "PRESIDENT":
                     rolle.text = token
-                elif pos == "TITLE" or pos == "NAME":
-                    name.text += token
-            name.text += ":"
+                elif pos == "TITLE":
+                    titel = ET.SubElement(name, 'titel')
+                    titel.text = token
+                elif pos == "NAME":
+                    first_lastname = token.split(" ")
+                    if len(first_lastname) > 1:
+                        first_tag = ET.SubElement(name, 'vorname')
+                        first_tag.text = ' '.join(first_lastname[:-1])
+                    last_tag = ET.SubElement(name, 'nachname')
+                    last_tag.text = ''.join(first_lastname[-1])
+            name.append(rolle)
 
             if is_in_interQuestion == True:
                 interQuestion_tag.append(president_tag)
@@ -434,19 +457,19 @@ def convertXMLData(file_path, chunk_data):
                 parent_tag = speak_tag
                 continue
 
-            if parent_tag.tag == "rede":
-                is_equal = compareSpeaker(speak_tag, parent_tag)
-
-                if is_equal == True:
-                    tag_list = list(speak_tag)
-                    for e in tag_list:
-                        parent_tag.append(e)
-                else:
-                    group_tag.append(speak_tag)
-                    parent_tag = speak_tag
-            else:
-                group_tag.append(speak_tag)
-                parent_tag = speak_tag
+            # if parent_tag.tag == "rede":
+            #     is_equal = compareSpeaker(speak_tag, parent_tag)
+            #
+            #     if is_equal == True:
+            #         tag_list = list(speak_tag)
+            #         for e in tag_list:
+            #             parent_tag.append(e)
+            #     else:
+            #         group_tag.append(speak_tag)
+            #         parent_tag = speak_tag
+            # else:
+            group_tag.append(speak_tag)
+            parent_tag = speak_tag
 
 
         elif label == "CCOMMENT":

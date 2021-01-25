@@ -1,0 +1,1 @@
+crf_test -m ../../../data/model_file ./input/18002_test_file.txt > ./output/18002_result_crf.txt

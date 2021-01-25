@@ -1,0 +1,1 @@
+crf_learn ../../../data/template_file ../../../data/train_file_template.txt ./output/model_file
