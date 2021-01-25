@@ -3,7 +3,7 @@ import nltk
 from nltk.tree import Tree
 from nltk.chunk import conlltags2tree
 import xml.etree.ElementTree as ET
-from Include.new import io_utils
+import io_utils
 from xml.dom import minidom
 
 def printData(arr):
@@ -74,10 +74,13 @@ def split(row):
 def getUpcaseCaption(word):
     # check uppercase
     cap = 'NoCap'
-    if re.search(r'^[A-ZÄÖÜß]', word) != None:
+    if checkUpcase(word):
         cap = 'Cap'
 
     return cap
+
+def checkUpcase(word):
+    return re.search(r'^[A-ZÄÖÜß]', word) != None
 
 def convertBIOTag(arr):
     output = []
@@ -176,10 +179,10 @@ def convertXMLData(file_path, chunk_data):
         CEVENTDATE:{<START-LINE><STATE><DOT><WEEKDAY><DOT><PARAGRAPH>?<NUMBER><DOT>?<MONTH><DOT>?<NUMBER><BREAK-LINE>}
         CPRESIDENT:{<START-LINE><PRESIDENT><TITLE>?<NAME>+<COLON><BREAK-LINE>}
         CNAME:{<START-LINE><TITLE>?<NAME>+(<PARAGRAPH>|<BBRACKET><FRACTION><DIV>?<FRACTION>?<EBRACKET>|<BBRACKET><PARAGRAPH><EBRACKET>|<DOT>)*<COLON><BREAK-LINE>}
-        CAGENDA:{<START-LINE>(<PARAGRAPH><AGENDA><NUMBER>)+(<PARAGRAPH>|<DIV>|<MONTH>|<MEETING>|<WEEKDAY>|<STATE>|<DOT>|<MOOD>|<NUMBER>|<TIME>|<TITLE>?<NAME>|<FRACTION><DIV>?<FRACTION>?|)*<COLON><BREAK-LINE>}
+        CAGENDA:{<START-LINE>(<PARAGRAPH><AGENDA><NUMBER>)+(<PARAGRAPH>|<DIV>|<MONTH>|<MEETING>|<WEEKDAY>|<STATE>|<DOT>|<QUESTION>|<MOOD>|<NUMBER>|<TIME>|<TITLE>?<NAME>|<FRACTION><DIV>?<FRACTION>?|)*<COLON><BREAK-LINE>}
         CEND:{<START-LINE><BBRACKET><END><COLON><NUMBER><DOT><NUMBER><TIME><EBRACKET><BREAK-LINE>}
-        CCOMMENT:{<START-LINE>(<BBRACKET>(<MOOD>|<PARAGRAPH>|<COLON>|<MONTH>|<WEEKDAY>|<MEETING>|<STATE>|<TITLE>?<NAME>*|<FRACTION><DIV>?<FRACTION>?|<DOT>|<COLON>|<PRESIDENT>|<NUMBER>|<DIV>|<TITLE>)+<EBRACKET>)+<BREAK-LINE>}
-        CPARAGRAPH:{<START-LINE>(<TITLE><PRESIDENT>|<TITLE>?<DOT>?|<MONTH>|<WEEKDAY>|<MEETING>|<STATE>|<PRESIDENT>|<AGENDA>|<MOOD>|<NUMBER>|<TIME>|<TITLE>?<NAME>|<FRACTION><DIV>?<FRACTION>?|<DIV>|<PARAGRAPH>|<DOT>|<COLON>|<BBRACKET>|<EBRACKET>)+(<DOT>|<COLON>|)<BREAK-LINE>}
+        CCOMMENT:{<START-LINE>(<BBRACKET>(<INTERQUESTION>|<MOOD>|<PARAGRAPH>|<COLON>|<MONTH>|<WEEKDAY>|<MEETING>|<STATE>|<TITLE>?<NAME>*|<FRACTION><DIV>?<FRACTION>?|<DOT>|<QUESTION>|<COLON>|<PRESIDENT>|<NUMBER>|<DIV>|<TITLE>)+<EBRACKET>)+<BREAK-LINE>}
+        CPARAGRAPH:{<START-LINE>(<INTERQUESTION>|<TITLE><PRESIDENT>|<TITLE>?<DOT>?|<MONTH>|<WEEKDAY>|<MEETING>|<STATE>|<PRESIDENT>|<AGENDA>|<MOOD>|<NUMBER>|<TIME>|<TITLE>?<NAME>|<FRACTION><DIV>?<FRACTION>?|<DIV>|<PARAGRAPH>|<DOT>|<COLON>|<QUESTION>|<BBRACKET>|<EBRACKET>)+(<DOT>|<COLON>|)<BREAK-LINE>}
     """
     cp = nltk.RegexpParser(grammar)
     dt = cp.parse(chunk_data)
@@ -198,12 +201,18 @@ def convertXMLData(file_path, chunk_data):
     is_bracket_before = False
     is_head_tag = True
     group_tag = content #tagesordnungspunkt or sitzungsbeginn
-    old_rede = None
+    old_group_tag = content
+    reder = None
+    questioner = None
+    is_president_before = False
+    is_in_interQuestion = False
+    interQuestion_tag = None
+    president_tag = None
 
     for label, leaves in xml_data:
         line = ""
         for ch, tag in leaves:
-            if tag not in ["DOT","COLON"]:
+            if tag not in ["DOT","COLON", "QUESTION"]:
                 if tag not in ["BBRACKET","EBRACKET"]:
                     if is_bracket_before:
                         is_bracket_before = False
@@ -338,8 +347,9 @@ def convertXMLData(file_path, chunk_data):
 
         # CPRESIDENT:{<START-LINE><PRESIDENT><TITLE>?<NAME>+<COLON><BREAK-LINE>}
         elif label == "CPRESIDENT":
-            rolle = ET.SubElement(parent_tag, 'rolle')
-            name = ET.SubElement(parent_tag, 'name')
+            president_tag = ET.Element('praesident')
+            rolle = ET.SubElement(president_tag, 'rolle')
+            name = ET.SubElement(president_tag, 'name')
             name.text = ""
             for token, pos in leaves:
                 if pos == "PRESIDENT":
@@ -348,16 +358,17 @@ def convertXMLData(file_path, chunk_data):
                     name.text += token
             name.text += ":"
 
+            if is_in_interQuestion == True:
+                interQuestion_tag.append(president_tag)
+            else:
+                group_tag.append(president_tag)
+
         #<START-LINE><TITLE>?<NAME>+(<PARAGRAPH>|<BBRACKET><FRACTION><DIV>?<FRACTION>?<EBRACKET>|<BBRACKET><PARAGRAPH><EBRACKET>|<DOT>)*<COLON><BREAK-LINE>
         elif label == "CNAME":
-            speak_tag = ET.SubElement(group_tag, 'rede')
-            #TODO SET ID
-
+            speak_tag = ET.Element('rede')
             p_tag = ET.SubElement(speak_tag, 'p')
             p_tag.set("klasse","redner")
             speaker_tag = ET.SubElement(p_tag,'redner')
-
-            #TODO: add id of redner
 
             name_tag = ET.SubElement(speaker_tag, 'name')
             fraktion_tag = ""
@@ -402,42 +413,101 @@ def convertXMLData(file_path, chunk_data):
                 role_tag.text = role
 
             speaker_tag.tail = line
-            if parent_tag.tag == "rede" and old_rede != None:
-                # get redner tag
-                name = speak_tag.find('p/redner/name')
-                name_titel = name.find('titel')
-                name_vor = name.find('vorname')
-                name_nach = name.find('nachname')
-                parent_name = parent_tag.find('p/redner/name')
-                parent_titel = parent_name.find('titel')
-                parent_vor = parent_name.find('vorname')
-                parent_nach = parent_name.find('nachname')
 
-                is_equal = True
-                if name_titel != None and parent_titel != None and name_titel.text != parent_titel.text:
-                    is_equal = False
-                if is_equal == True and name_vor != None and parent_vor.text != None and name_vor.text != parent_vor.text:
-                    is_equal = False
-                if is_equal == True and name_nach != None and parent_nach.text != None and name_nach.text != parent_nach.text:
-                    is_equal = False
+            if is_in_interQuestion == True:
+                is_equal_reder = compareSpeaker(speak_tag, reder)
+                if questioner == None:
+                    if is_equal_reder == False:
+                        questioner = speak_tag
+                else:
+                    if is_equal_reder == False:
+                        is_equal = compareSpeaker(speak_tag, questioner)
+                        if is_equal == False:
+                            is_in_interQuestion = False
+                            questioner = None
+                            reder = None
+                            group_tag.append(speak_tag)
+                            parent_tag = speak_tag
+                            continue
+
+                interQuestion_tag.append(speak_tag)
+                parent_tag = speak_tag
+                continue
+
+            if parent_tag.tag == "rede":
+                is_equal = compareSpeaker(speak_tag, parent_tag)
+
                 if is_equal == True:
                     tag_list = list(speak_tag)
                     for e in tag_list:
                         parent_tag.append(e)
-                    group_tag.remove(speak_tag)
                 else:
+                    group_tag.append(speak_tag)
                     parent_tag = speak_tag
-                    old_rede = speak_tag
             else:
+                group_tag.append(speak_tag)
                 parent_tag = speak_tag
-                old_rede = speak_tag
+
 
         elif label == "CCOMMENT":
             comment_tag = ET.SubElement(parent_tag, 'kommentar')
             comment_tag.text = line
 
         elif label == "CPARAGRAPH":
-            p_tag = ET.SubElement(parent_tag, 'p')
-            p_tag.text = line
+
+            is_interQuestion = False
+
+            #check the sentence is a question or not
+            #and whether the speaker is president or not
+            if leaves[-2][1] == "QUESTION" and is_president_before:
+                #check contains INTERQUESTION card or not?
+                for token, tag in leaves:
+                    if tag == "INTERQUESTION":
+                        is_interQuestion = True
+                        break
+            if is_interQuestion:
+                president_tag = list(group_tag)[-1]
+                group_tag.remove(president_tag)
+                interQuestion_tag = ET.SubElement(parent_tag, 'zwischenfrage')
+                interQuestion_tag.append(president_tag)
+                pre_sentence_tag = ET.SubElement(president_tag, 'p')
+                pre_sentence_tag.text = line
+                questioner = None
+                reder = parent_tag
+                is_in_interQuestion = True
+                parent_tag = president_tag
+            else:
+                if is_president_before:
+                    parent_tag = president_tag
+                p_tag = ET.SubElement(parent_tag, 'p')
+                p_tag.text = line
+
+        if label == "CPRESIDENT":
+            is_president_before = True
+        else:
+            is_president_before = False
 
     io_utils.exportXMLFile(file_path, wrapper)
+
+def compareSpeaker(a_tag, b_tag):
+    if a_tag.tag != "rede" or b_tag.tag != "rede":
+        return False
+    a_name = a_tag.find('p/redner/name')
+    a_titel = a_name.find('titel')
+    a_vor = a_name.find('vorname')
+    a_nach = a_name.find('nachname')
+
+    b_name = b_tag.find('p/redner/name')
+    b_titel = b_name.find('titel')
+    b_vor = b_name.find('vorname')
+    b_nach = b_name.find('nachname')
+
+    is_equal = True
+    if a_titel != None and b_titel != None and a_titel.text != b_titel.text:
+        is_equal = False
+    if is_equal == True and a_vor != None and b_vor.text != None and a_vor.text != b_vor.text:
+        is_equal = False
+    if is_equal == True and a_nach != None and b_nach.text != None and a_nach.text != b_nach.text:
+        is_equal = False
+
+    return is_equal

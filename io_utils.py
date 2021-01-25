@@ -2,6 +2,7 @@ import codecs
 import re
 import xml.etree.ElementTree as ET
 from lxml import etree
+import data_utils
 
 def readFile(file_path):
     rs = []
@@ -29,9 +30,18 @@ def repareDataInOneLine(xml_file_path, list_name_paticipants):
 
     for row in allRow:
         row = row.replace("\r", "").replace("\t", " ").strip()
+
+        if row == "I n h a l t :":
+            if dataRow != "":
+                data.append(dataRow.strip())
+                dataRow = ""
+                is_connected = False
+                is_just_removed = False
+            data.append(row)
+            continue
         if row == "" and is_just_removed:
             continue
-        if check_name_paticipants(row,list_name_paticipants) or re.search(r'(\)|:|\.|\?|\d\s[A-Z])$', row) != None or (row == "" and dataRow != "" and re.search(r'(-|–)$', dataRow) == None):
+        if check_name_paticipants(row, list_name_paticipants) or re.search(r'(\)|:|\.|\?|\d\s[A-Z])$', row) != None or (row == "" and dataRow != "" and re.search(r'(-|–)$', dataRow) == None):
             if row != "":
                 if is_connected:
                     if re.search(r"(-|–)$", dataRow) != None:
@@ -64,8 +74,8 @@ def repareDataInOneLine(xml_file_path, list_name_paticipants):
     if dataRow != "":
         data.append(dataRow)
 
-    # with codecs.open('./output/data_oneline.txt', 'w+', 'utf-8') as file:
-    #     file.write("\n".join(data))
+    with codecs.open('./output/data_oneline.txt', 'w+', 'utf-8') as file:
+        file.write("\n".join(data))
     return data
 
 

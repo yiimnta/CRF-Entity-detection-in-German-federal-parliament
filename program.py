@@ -121,6 +121,9 @@ class ICCli():
             elif word == "Sitzung":
                 result.append((word, "MEETING", upcase, "MEETING"))
 
+            elif word == "Zwischenfrage" or word == "Zwischenfragen":
+                result.append((word, "INQUEST", upcase, "INTERQUESTION"))
+
             elif word == "Schluss":
                 result.append((word, "END", upcase, "END"))
 
@@ -129,6 +132,9 @@ class ICCli():
 
             elif word == "/":
                 result.append((word, "DIV", upcase, "DIV"))
+
+            elif word == "?":
+                result.append((word, "QUES", upcase, "QUESTION"))
 
             elif re.search(r'^(Tagesordnungspunkt(|e|es|en|em)|Zusatzpunkt(|e|es|en|em))$', word) != None:
                 result.append((word, "AGEN", upcase, "AGENDA"))
@@ -154,7 +160,7 @@ class ICCli():
             elif word == ")":
                 result.append((word, "BRACKET", upcase, "EBRACKET"))
 
-            elif word == "." or word == "?" or word == "!" or word == ",":
+            elif word == "." or word == "!" or word == ",":
                 result.append((word, "DOT", upcase, "DOT"))
 
             elif word in self.list_fraction:
