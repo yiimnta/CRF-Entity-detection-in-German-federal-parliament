@@ -16,7 +16,7 @@ pip install lxml
 ```bash
 pip install nltk
 ```
-# How to Run
+# A. CONDITIONAL RANDOM FIELDS
 ### Training
 The file `data\name_paticipants.txt` contains a list of names of conference participants and the content is collected from <a href="https://www.bundestag.de/parlament/plenum/abstimmung/liste" target="_blank">here</a>.
 We use this file as a parameter to the `ICCli` class.
@@ -89,7 +89,7 @@ crf_learn template_file train_file.txt model_file
 Full example is found <a href="https://github.com/yiimnta/CRF-Entity-detection-in-German-federal-parliament/blob/main/examples/crf/crf%2B%2B/crf_learn.sh" target="_blank">here</a>
 
 ### Testing
-Create data for testing
+Create testing data
 
 ```python
 program = ICCli("../data/name_paticipants.txt")
@@ -131,3 +131,28 @@ Full example is found <a href="https://github.com/yiimnta/CRF-Entity-detection-i
 
 ### CRF++ Testing
 
+Syntax:
+```bash
+crf_test <model file path> <testing file path> > <result file path>
+```
+
+For an example:
+```bash
+crf_test model_file test_file.txt > result.txt
+```
+
+Full example is found <a href="https://github.com/yiimnta/CRF-Entity-detection-in-German-federal-parliament/blob/main/examples/crf/crf%2B%2B/crf_test.sh" target="_blank">here</a>
+
+# B. Chunking and export XML File
+
+Export XML:
+```python
+program = ICCli("../data/name_paticipants.txt")
+program.exportXML('<crf result file path>', '<xml output file path>')
+```
+
+For an example:
+```python
+pro.exportXML('./train_file.txt', path+ './result.xml')
+```
+Full example is found <a href="https://github.com/yiimnta/CRF-Entity-detection-in-German-federal-parliament/tree/main/examples/chunking" target="_blank">here</a>
